@@ -148,7 +148,7 @@ final class LicenseCheckPlugin
         }
 
         if (!$allowedToUse) {
-            if (!array_key_exists($package->getPrettyName(), $this->whitelistedPackages)) {
+            if (!in_array($package->getPrettyName(), $this->whitelistedPackages)) {
                 throw new LicenseNotAllowedException(
                     sprintf(
                         'ERROR: Licenses "%s" of package "%s" are not allowed to be used in the project. Installation failed.',
