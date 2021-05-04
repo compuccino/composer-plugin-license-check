@@ -29,7 +29,8 @@ composer.json.
   "extra": {
     "metasyntactical/composer-plugin-license-check": {
       "whitelist": [],
-      "blacklist": []
+      "blacklist": [],
+      "whitelisted-packages": []
     }
   }
 }
