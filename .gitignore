@@ -1,0 +1,8 @@
+/.phpunit.result.cache
+/build/
+/composer.*
+!/composer.json
+/phpunit.xml
+/.idea/
+/*.iml
+/vendor/
