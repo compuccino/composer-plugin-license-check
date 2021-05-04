@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Metasyntactical\Composer\LicenseCheck\Command;
 
@@ -24,15 +26,14 @@ final class CheckLicensesCommand extends BaseCommand
             ->setDescription('Validate licenses of installed packages against specified white- and blacklists.')
             ->setDefinition([
                 new InputOption('format', 'f', InputOption::VALUE_REQUIRED, 'Format of the output: text or json', 'text'),
+                new InputOption('error-only', 'e', InputOption::VALUE_NONE, 'Only output licenses that did not pass'),
                 new InputOption('no-dev', null, InputOption::VALUE_NONE, 'Disables search in require-dev packages.'),
             ])
             ->setHelp(<<<EOT
 The check-licenses command displays detailed information about the licenses of
 the installed packages and whether they are allowed or forbidden to be used in
 the root project.
-EOT
-            )
-        ;
+EOT);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -56,12 +57,12 @@ EOT
 
         $packagesInfo = $this->calculatePackagesInfo($root, $packages);
         $violationFound = false;
-
+        $errorOnly = $input->getOption('error-only');
         switch ($format = $input->getOption('format')) {
             case 'text':
-                $io->write('Name: <comment>'.$packagesInfo['name'].'</comment>');
-                $io->write('Version: <comment>'.$packagesInfo['version'].'</comment>');
-                $io->write('Licenses: <comment>'.(implode(', ', $packagesInfo['license']) ?: 'none').'</comment>');
+                $io->write('Name: <comment>' . $packagesInfo['name'] . '</comment>');
+                $io->write('Version: <comment>' . $packagesInfo['version'] . '</comment>');
+                $io->write('Licenses: <comment>' . (implode(', ', $packagesInfo['license']) ?: 'none') . '</comment>');
                 $io->write('Dependencies:');
                 $io->write('');
 
@@ -72,12 +73,14 @@ EOT
                 $table->setHeaders(['Name', 'Version', 'License', 'Allowed to Use?']);
                 /** @noinspection ForeachSourceInspection */
                 foreach ($packagesInfo['dependencies'] as $dependencyName => $dependency) {
-                    $table->addRow([
-                        $dependencyName,
-                        $dependency['version'],
-                        implode(', ', $dependency['license']) ?: 'none',
-                        $dependency['allowed_to_use'] ? 'yes' : 'no' . ($dependency['whitelisted'] ? ' (whitelisted)' : ''),
-                    ]);
+                    if (!$errorOnly || (!$dependency['allowed_to_use'] && !$dependency['whitelisted'])) {
+                        $table->addRow([
+                            $dependencyName,
+                            $dependency['version'],
+                            implode(', ', $dependency['license']) ?: 'none',
+                            $dependency['allowed_to_use'] ? 'yes' : 'no' . ($dependency['whitelisted'] ? ' (whitelisted)' : ''),
+                        ]);
+                    }
                     $violationFound = $violationFound || (!$dependency['allowed_to_use'] && !$dependency['whitelisted']);
                 }
                 $table->render();
@@ -116,26 +119,31 @@ EOT
 
     private function calculatePackageInfo(PackageInterface $rootPackage, CompletePackageInterface $package): array
     {
-        $allowedToUse = true; $whitelisted = false;
+        $allowedToUse = true;
+        $whitelisted = false;
 
         $extraConfigKey = 'metasyntactical/composer-plugin-license-check';
         $whitelist = [];
         $blacklist = [];
         $whitelistedPackages = [];
-        if (array_key_exists($extraConfigKey, $rootPackage->getExtra())
+        if (
+            array_key_exists($extraConfigKey, $rootPackage->getExtra())
             && is_array($rootPackage->getExtra()[$extraConfigKey])
         ) {
-            if (array_key_exists('whitelist', $rootPackage->getExtra()[$extraConfigKey])
+            if (
+                array_key_exists('whitelist', $rootPackage->getExtra()[$extraConfigKey])
                 && in_array(gettype($rootPackage->getExtra()[$extraConfigKey]['whitelist']), ['string', 'array'], true)
             ) {
                 $whitelist = (array) $rootPackage->getExtra()[$extraConfigKey]['whitelist'];
             }
-            if (array_key_exists('blacklist', $rootPackage->getExtra()[$extraConfigKey])
+            if (
+                array_key_exists('blacklist', $rootPackage->getExtra()[$extraConfigKey])
                 && in_array(gettype($rootPackage->getExtra()[$extraConfigKey]['blacklist']), ['string', 'array'], true)
             ) {
                 $blacklist = (array) $rootPackage->getExtra()[$extraConfigKey]['blacklist'];
             }
-            if (array_key_exists('whitelisted-packages', $rootPackage->getExtra()[$extraConfigKey])
+            if (
+                array_key_exists('whitelisted-packages', $rootPackage->getExtra()[$extraConfigKey])
                 && in_array(gettype($rootPackage->getExtra()[$extraConfigKey]['whitelisted-packages']), ['array'], true)
             ) {
                 $whitelistedPackages = (array) $rootPackage->getExtra()[$extraConfigKey]['whitelisted-packages'];
@@ -148,7 +156,7 @@ EOT
         if ($allowedToUse && $whitelist) {
             $allowedToUse = !!array_intersect($package->getLicense(), $whitelist);
         }
-        if (!$allowedToUse && in_array($package->getPrettyName(), $whitelistedPackages)) {
+        if (!$allowedToUse && isset($whitelistedPackages[$package->getPrettyName()])) {
             $whitelisted = true;
         }
 
@@ -165,9 +173,10 @@ EOT
     }
 
     private function filterRequiredPackages(
-        RepositoryInterface $repo, PackageInterface $package, array $bucket = []
-    ): array
-    {
+        RepositoryInterface $repo,
+        PackageInterface $package,
+        array $bucket = []
+    ): array {
         $requires = array_keys($package->getRequires());
 
         $packageListNames = array_keys($bucket);
