@@ -148,7 +148,7 @@ EOT
         if ($allowedToUse && $whitelist) {
             $allowedToUse = !!array_intersect($package->getLicense(), $whitelist);
         }
-        if (!$allowedToUse && isset($whitelistedPackages[$package->getPrettyName()])) {
+        if (!$allowedToUse && in_array($package->getPrettyName(), $whitelistedPackages)) {
             $whitelisted = true;
         }
 
