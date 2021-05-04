@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Metasyntactical\Composer\LicenseCheck\GrumPHP;
 
 use GrumPHP\Task\AbstractExternalTask;
+use GrumPHP\Task\Config\EmptyTaskConfig;
 use GrumPHP\Runner\TaskResult;
+use GrumPHP\Task\Config\TaskConfigInterface;
 use GrumPHP\Runner\TaskResultInterface;
 use GrumPHP\Task\Context\ContextInterface;
 use GrumPHP\Task\Context\GitPreCommitContext;
@@ -46,6 +48,7 @@ class ComposerLicense extends AbstractExternalTask
 
     $arguments = $this->processBuilder->createArgumentsForCommand('composer');
     $arguments->add('check-licenses');
+    $arguments->add('-e');
 
 
     $process = $this->processBuilder->buildProcess($arguments);
