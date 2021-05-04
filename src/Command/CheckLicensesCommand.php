@@ -85,7 +85,7 @@ EOT
 
             case 'json':
                 foreach ($packagesInfo['dependencies'] as $dependency) {
-                    $violationFound = $violationFound || !$dependency['allowed_to_use'];
+                    $violationFound = $violationFound || (!$dependency['allowed_to_use'] && !$dependency['whitelisted']);
                 }
                 $io->write(JsonFile::encode($packagesInfo));
                 break;
@@ -148,11 +148,11 @@ EOT
         if ($allowedToUse && $whitelist) {
             $allowedToUse = !!array_intersect($package->getLicense(), $whitelist);
         }
-        if (!$allowedToUse && array_key_exists($package->getPrettyName(), $whitelistedPackages)) {
+        if (!$allowedToUse && isset($whitelistedPackages[$package->getPrettyName()])) {
             $whitelisted = true;
         }
 
-        if ($package->getName() === 'metasyntactical/composer-plugin-license-check') {
+        if ($package->getName() === 'compuccino/composer-plugin-license-check') {
             $allowedToUse = true;
         }
 
